@@ -4,59 +4,73 @@
 #include <map>
 #include <vector>
 
+#include "/Users/max/github/node-tree-sitter/vendor/tree-sitter/spec/helpers/stream_methods.h"
+
 namespace tree_sitter {
 namespace build_tables {
 
 template <typename TableType, typename ActionType>
-std::map<size_t, size_t> remove_duplicate_states(TableType *table) {
+void remove_duplicate_states(TableType *table) {
   std::map<size_t, size_t> replacements;
 
   while (true) {
-    std::map<size_t, size_t> duplicates;
-    for (size_t i = 0, size = table->states.size(); i < size; i++)
-      for (size_t j = 0; j < i; j++)
-        if (!duplicates.count(j) && table->merge_state(j, i)) {
-          duplicates.insert({ i, j });
+    bool did_add_new_replacement = false;
+    for (size_t i = 0, size = table->states.size(); i < size; i++) {
+      if (replacements.count(i))
+        continue;
+      for (size_t j = 0; j < i; j++) {
+        if (replacements.count(i))
+          continue;
+        if (table->merge_state(j, i)) {
+          did_add_new_replacement = true;
+          replacements.insert({ i, j });
           break;
         }
-
-    if (duplicates.empty())
-      break;
-
-    std::map<size_t, size_t> new_replacements;
-    for (size_t i = 0, size = table->states.size(); i < size; i++) {
-      size_t new_state_index = i;
-      auto duplicate = duplicates.find(i);
-      if (duplicate != duplicates.end())
-        new_state_index = duplicate->second;
-
-      size_t prior_removed = 0;
-      for (const auto &duplicate : duplicates) {
-        if (duplicate.first >= new_state_index)
-          break;
-        prior_removed++;
       }
-
-      new_state_index -= prior_removed;
-      new_replacements.insert({ i, new_state_index });
-      replacements.insert({ i, new_state_index });
-      for (auto &replacement : replacements)
-        if (replacement.second == i)
-          replacement.second = new_state_index;
     }
 
-    for (auto &state : table->states)
-      state.each_advance_action([&new_replacements](ActionType *action) {
-        auto new_replacement = new_replacements.find(action->state_index);
-        if (new_replacement != new_replacements.end())
-          action->state_index = new_replacement->second;
-      });
+    if (!did_add_new_replacement)
+      break;
 
-    for (auto i = duplicates.rbegin(); i != duplicates.rend(); ++i)
-      table->states.erase(table->states.begin() + i->first);
+    for (auto &state : table->states)
+      state.each_advance_action([&replacements](ActionType *action) {
+        auto replacement = replacements.find(action->state_index);
+        if (replacement != replacements.end())
+          action->state_index = replacement->second;
+      });
   }
 
-  return replacements;
+  std::cout << replacements << "\n\n";
+
+  std::vector<size_t> removed_state_indices;
+  for (auto begin = table->states.begin(), i = begin; i != table->states.end();) {
+    size_t state_index = i - begin;
+    size_t original_state_index = state_index + removed_state_indices.size();
+    // printf("State_index: %lu, original state index:%lu, size:%lu\n", state_index, original_state_index, table->states.size());
+
+    auto replacement_entry = replacements.find(original_state_index);
+    if (replacement_entry != replacements.end()) {
+      // printf("  erasing\n");
+
+      table->states.erase(i);
+      removed_state_indices.push_back(original_state_index);
+    } else {
+      i->each_advance_action([&replacements](ActionType *action) {
+        size_t number_of_prior_states_removed = 0;
+        for (auto &replacement : replacements) {
+          if (replacement.first >= action->state_index)
+            break;
+          number_of_prior_states_removed++;
+        }
+
+        // if (action->state_index != previous_action_state_index)
+        //   printf("  adjusting action state: %lu -> %lu\n", previous_action_state_index, action->state_index);
+
+        action->state_index -= number_of_prior_states_removed;
+      });
+      ++i;
+    }
+  }
 }
 
 }  // namespace build_tables

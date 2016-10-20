@@ -141,19 +141,19 @@ class LexTableBuilder {
   }
 
   void remove_duplicate_lex_states() {
-    for (LexState &state : lex_table.states) {
-      state.accept_action.is_string = false;
-      state.accept_action.precedence = 0;
-    }
-
-    auto replacements =
-      remove_duplicate_states<LexTable, AdvanceAction>(&lex_table);
-
-    for (ParseState &parse_state : parse_table->states) {
-      auto replacement = replacements.find(parse_state.lex_state_id);
-      if (replacement != replacements.end())
-        parse_state.lex_state_id = replacement->second;
-    }
+    // for (LexState &state : lex_table.states) {
+    //   state.accept_action.is_string = false;
+    //   state.accept_action.precedence = 0;
+    // }
+    //
+    // auto replacements =
+    //   remove_duplicate_states<LexTable, AdvanceAction>(&lex_table);
+    //
+    // for (ParseState &parse_state : parse_table->states) {
+    //   auto replacement = replacements.find(parse_state.lex_state_id);
+    //   if (replacement != replacements.end())
+    //     parse_state.lex_state_id = replacement->second;
+    // }
   }
 
   LexItemSet item_set_for_tokens(const set<Symbol> &symbols) {

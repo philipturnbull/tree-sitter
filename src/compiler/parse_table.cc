@@ -142,7 +142,7 @@ set<Symbol> ParseState::expected_inputs() const {
 void ParseState::each_advance_action(function<void(ParseAction *)> fn) {
   for (auto &entry : entries)
     for (ParseAction &action : entry.second.actions)
-      if (action.type == ParseActionTypeShift || ParseActionTypeRecover)
+      if (action.type == ParseActionTypeShift || action.type == ParseActionTypeRecover)
         fn(&action);
 }
 
