@@ -12,19 +12,40 @@ namespace build_tables {
 template <typename TableType, typename ActionType>
 void remove_duplicate_states(TableType *table) {
   std::map<size_t, size_t> replacements;
+  std::set<size_t> merged_state_ids;
+  std::set<size_t> last_merged_state_ids;
+  bool first_time_through = true;
 
   while (true) {
     bool did_add_new_replacement = false;
-    for (size_t i = 0, size = table->states.size(); i < size; i++) {
-      if (replacements.count(i))
-        continue;
-      for (size_t j = 0; j < i; j++) {
+
+    if (first_time_through) {
+      first_time_through = false;
+      for (size_t i = 0, size = table->states.size(); i < size; i++) {
         if (replacements.count(i))
           continue;
-        if (table->merge_state(j, i)) {
-          did_add_new_replacement = true;
-          replacements.insert({ i, j });
-          break;
+        for (size_t j = 0; j < i; j++) {
+          if (replacements.count(j))
+            continue;
+          if (table->merge_state(j, i)) {
+            did_add_new_replacement = true;
+            replacements.insert({ i, j });
+            merged_state_ids.insert(j);
+            break;
+          }
+        }
+      }
+    } else {
+      for (size_t j : last_merged_state_ids) {
+        for (size_t i = 0; i < table->states.size(); i++) {
+          if (i == j || replacements.count(i))
+            continue;
+          if (table->merge_state(j, i)) {
+            did_add_new_replacement = true;
+            replacements.insert({ i, j });
+            merged_state_ids.insert(j);
+            break;
+          }
         }
       }
     }
@@ -38,6 +59,9 @@ void remove_duplicate_states(TableType *table) {
         if (replacement != replacements.end())
           action->state_index = replacement->second;
       });
+
+    last_merged_state_ids = std::move(merged_state_ids);
+    merged_state_ids.clear();
   }
 
   std::cout << replacements << "\n\n";
