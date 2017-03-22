@@ -428,6 +428,8 @@ static bool parser__better_version_exists(Parser *self, StackVersion version,
       self->finished_tree->error_cost <= my_error_status.cost)
     return true;
 
+  uint32_t position = ts_stack_top_position(self->stack, version).bytes;
+
   for (StackVersion i = 0, n = ts_stack_version_count(self->stack); i < n; i++) {
     if (i == version || ts_stack_is_halted(self->stack, i))
       continue;
@@ -435,11 +437,16 @@ static bool parser__better_version_exists(Parser *self, StackVersion version,
     switch (error_status_compare(my_error_status,
                                  ts_stack_error_status(self->stack, i))) {
       case -1:
-        LOG("halt_other version:%u", i);
-        ts_stack_halt(self->stack, i);
-        break;
+        if (position >= ts_stack_top_position(self->stack, i).bytes) {
+          LOG("halt_other version:%u", i);
+          ts_stack_halt(self->stack, i);
+          break;
+        }
+
       case 1:
-        return true;
+        if (ts_stack_top_position(self->stack, i).bytes >= position) {
+          return true;
+        }
     }
   }
 
