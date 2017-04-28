@@ -245,8 +245,10 @@ static Tree *parser__lex(Parser *self, StackVersion version) {
     }
 
     if (!found_error) {
-      LOG("retry_in_error_mode");
+      LOG("bail_entirely_on_first_error");
       found_error = true;
+      LOG("skip_unrecognized_character");
+      skipped_error = true;
       lex_mode = self->language->lex_modes[ERROR_STATE];
       valid_external_tokens = ts_language_enabled_external_tokens(
         self->language,
@@ -1088,6 +1090,8 @@ static void parser__advance(Parser *self, StackVersion version,
           StackSlice slice = *array_front(&reduction.slices);
           if (reduction.stopped_at_error) {
             reduction_stopped_at_error = true;
+            break;
+
             if (!parser__repair_error(self, slice, lookahead->first_leaf.symbol,
                                       table_entry))
               break;
