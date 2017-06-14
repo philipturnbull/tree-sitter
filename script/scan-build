@@ -10,4 +10,4 @@ if [[ ! -z "$CXX" ]]; then
   extra_args+=("--use-c++=$CXX")
 fi
 
-scan-build --status-bugs "${extra_args[@]}" make -j4
+scan-build --status-bugs -disable-checker deadcode.DeadStores "${extra_args[@]}" make -j4
