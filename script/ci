@@ -4,4 +4,5 @@ set -e
 
 script/fetch-fixtures
 script/check-mallocs
+script/scan-build
 script/test

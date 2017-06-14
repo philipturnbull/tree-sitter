@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -e
+extra_args=($@)
+
+if [[ ! -z "$CC" ]]; then
+  extra_args+=("--use-cc=$CC")
+fi
+
+if [[ ! -z "$CXX" ]]; then
+  extra_args+=("--use-c++=$CXX")
+fi
+
+scan-build --status-bugs "${extra_args[@]}" make -j4
