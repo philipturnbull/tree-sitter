@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -ex
 
 . script/lib.sh
 
@@ -88,7 +88,7 @@ else
 fi
 
 if [[ ! -z "$run_scan_build" ]]; then
-	scan_build make -j2 $target
+	V=1 scan_build -v make -j2 $target
 else
 	make -j2 $target
 fi
