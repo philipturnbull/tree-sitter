@@ -7,4 +7,5 @@ set -e
 script/fetch-fixtures
 script/check-mallocs
 scan_build make
+echo "finished first scan-build -> $?"
 script/test -b
