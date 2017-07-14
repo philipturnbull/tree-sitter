@@ -135,6 +135,16 @@
           'OTHER_CPLUSPLUSFLAGS': ['-fsanitize=address'],
         },
       },
+      'Fuzz': {
+        'cflags': [ '-g' ],
+        'ldflags': [ '-g' ],
+        'xcode_settings': {
+          'OTHER_LDFLAGS': ['-g'],
+          'GCC_OPTIMIZATION_LEVEL': '0',
+          'OTHER_CFLAGS': ['-fsanitize=address', '-fsanitize-coverage=trace-pc-guard'],
+          'OTHER_CPLUSPLUSFLAGS': ['-fsanitize=address', '-fsanitize-coverage=trace-pc-guard'],
+        },
+      },
       'Release': {
         'cflags': [ '-O2', '-fno-strict-aliasing' ],
         'cflags!': [ '-O3', '-fstrict-aliasing' ],

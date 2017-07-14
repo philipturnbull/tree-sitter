@@ -1,0 +1,46 @@
+#!/bin/bash
+set -eux
+./script/configure
+
+export BUILDTYPE=Fuzz
+CC=clang CXX=clang++ LINK=clang++ V=1 make runtime
+
+CC=clang
+CXX=clang++
+
+CFLAGS="-fsanitize=address -fsanitize=undefined -fsanitize-coverage=trace-pc-guard"
+CXXFLAGS="-fsanitize=address -fsanitize=undefined -fsanitize-coverage=trace-pc-guard"
+
+LIB_FUZZER_PATH="$HOME/src/llvm/lib/Fuzzer/libFuzzer.a"
+
+CLANG_DIR=$(dirname $(which clang))
+cp "${CLANG_DIR}/../lib/clang/5.0.0/lib/darwin/libclang_rt.asan_osx_dynamic.dylib" ./out
+
+languages=(python) #(go javascript ruby python c cpp typescript)
+
+for lang in ${languages[@]}; do
+  lang_dir="test/fixtures/grammars/$lang"
+
+  # The following assumes each language is implemented as src/parser.c plus an
+  # optional scanner in src/scanner.c/cc
+  objects=()
+
+  lang_scanner="${lang_dir}/src/scanner"
+  if [ -e "${lang_scanner}.cc" ]; then
+    $CXX $CXXFLAGS -v -g -O1 "-I${lang_dir}/src" -c "${lang_scanner}.cc" -o "${lang_scanner}.o"
+    objects+=("${lang_scanner}.o")
+  elif [ -e "${lang_scanner}.c" ]; then
+    # If it's plain C, compile it separately
+    $CC $CFLAGS -g -O1 "-I${lang_dir}/src" -c "${lang_scanner}.c" -o "${lang_scanner}.o"
+    objects+=("${lang_scanner}.o")
+  fi
+
+
+  $CC $CFLAGS -g -O0 "-I${lang_dir}/src" "${lang_dir}/src/parser.c" -c -o "${lang_dir}/src/parser.o"
+  objects+=("${lang_dir}/src/parser.o")
+
+
+  $CXX $CXXFLAGS -v -std=c++11 -Iinclude -D TREE_SITTER_WRAP_MALLOC=true -D FUZZ_HALT_ON_ERROR=true -D TSLANG="tree_sitter_$lang" "test/fuzz/fuzzer.cc" "${objects[@]}" out/Fuzz/libruntime.a "$LIB_FUZZER_PATH" -o "out/${lang}_fuzzer_halt"
+  $CXX $CXXFLAGS -v -std=c++11 -Iinclude -D TREE_SITTER_WRAP_MALLOC=true -D FUZZ_HALT_ON_ERROR=false -D TSLANG="tree_sitter_$lang" "test/fuzz/fuzzer.cc" "${objects[@]}" out/Fuzz/libruntime.a "$LIB_FUZZER_PATH" -o "out/${lang}_fuzzer"
+  python test/fuzz/gen-dict.py "${lang_dir}/src/grammar.json" > "out/$lang.dict"
+done
